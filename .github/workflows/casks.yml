@@ -1,0 +1,35 @@
+name: Create Casks PR
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-casks:
+    name: Create casks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch stuff (no checkout)
+        uses: Bhacaz/checkout-files@v2
+        with:
+          files: bin/scripts/lib/fonts.json bin/scripts/fetch-archives.sh bin/scripts/generate-casks.sh
+          branch: ${{ github.head_ref || github.ref_name }}
+      - name: Fetch release artifacts
+        run: |
+          cd bin/scripts
+          chmod u+x *
+          ./fetch-archives.sh latest
+      - name: Determine release tag
+        id: releasetag
+        run: |
+          TAG=$(ls archives/_Release* | head -n 1 | sed 's/.*_Release_//')
+          echo "Release has tag ${TAG}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+      - name: Create all casks
+        run: |
+          cd bin/scripts
+          ./generate-casks.sh --setversion ${{ steps.releasetag.outputs.tag }}
+      - name: Upload casks as artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: casks
+          path: casks
